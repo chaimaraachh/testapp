@@ -4,9 +4,10 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
-
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
+using Serilog;
+using Serilog.Sinks.Elasticsearch;
 
 namespace backend.Controllers
 {
@@ -29,12 +30,34 @@ namespace backend.Controllers
         public PizzaInfoController(ILogger<PizzaInfoController> logger)
         {
             _logger = logger;
+
+            // Configure Serilog logger
+            Log.Logger = new LoggerConfiguration()
+            .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri("http://elk4:9200"))
+        {
+            FailureCallback = e => Console.WriteLine("Unable to submit event " + e.MessageTemplate),
+            EmitEventFailure = EmitEventFailureHandling.WriteToSelfLog |
+                               EmitEventFailureHandling.WriteToFailureSink |
+                               EmitEventFailureHandling.RaiseCallback
+        })        
+    .CreateLogger();
         }
 
-         [HttpGet]
-         public IEnumerable<PizzaInfo> Get()
-         {
-             return TheMenu;
-         }
+        [HttpGet]
+        public IEnumerable<PizzaInfo> Get()
+        {
+            _logger.LogInformation("Executing GET action for PizzaInfoController");
+            _logger.LogWarning("This is a warning message");
+
+            return TheMenu;
+        }
+    }
+
+    public class PizzaInfo
+    {
+        public string PizzaName { get; set; }
+        public string Ingredients { get; set; }
+        public int Cost { get; set; }
+        public string InStock { get; set; }
     }
 }
