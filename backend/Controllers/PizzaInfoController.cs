@@ -7,7 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text.Json;
 using Serilog;
-using Serilog.Sinks.Elasticsearch;
+using Serilog.Context;
 
 namespace backend.Controllers
 {
@@ -30,24 +30,22 @@ namespace backend.Controllers
         public PizzaInfoController(ILogger<PizzaInfoController> logger)
         {
             _logger = logger;
-
-            // Configure Serilog logger
+            
             Log.Logger = new LoggerConfiguration()
-            .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri("http://elk4:9200"))
-        {
-            FailureCallback = e => Console.WriteLine("Unable to submit event " + e.MessageTemplate),
-            EmitEventFailure = EmitEventFailureHandling.WriteToSelfLog |
-                               EmitEventFailureHandling.WriteToFailureSink |
-                               EmitEventFailureHandling.RaiseCallback
-        })        
-    .CreateLogger();
+                .WriteTo.Console()
+                .WriteTo.Http("http://elk-stack-logstash-1:5000", queueLimitBytes: null)
+                .Enrich.WithProperty("IndexName", "myapp")
+                .CreateLogger();
+            
         }
 
         [HttpGet]
         public IEnumerable<PizzaInfo> Get()
         {
-            _logger.LogInformation("Executing GET action for PizzaInfoController");
-            _logger.LogWarning("This is a warning message");
+            {
+                _logger.LogInformation("Executing GET action for PizzaInfoController");
+                _logger.LogWarning("This is a warning message");
+            }
 
             return TheMenu;
         }
